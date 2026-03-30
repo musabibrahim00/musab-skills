@@ -1,0 +1,10 @@
+{
+  "name": "musab-skills",
+  "version": "1.0.0",
+  "description": "CLI to install Claude Code skills from GitHub",
+  "bin": {
+    "musab-skills": "./index.js"
+  },
+  "type": "module",
+  "license": "MIT"
+}
