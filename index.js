@@ -7,6 +7,15 @@ import https from "https";
 
 const args = process.argv.slice(2);
 
+function log(msg) {
+  console.log(msg);
+}
+
+function error(msg) {
+  console.error("Error:", msg);
+  process.exit(1);
+}
+
 function parseArgs(args) {
   const command = args[0];
   const repo = args[1];
@@ -27,43 +36,53 @@ function download(url) {
   return new Promise((resolve, reject) => {
     https.get(url, (res) => {
       if (res.statusCode !== 200) {
-        reject("Failed to fetch skill");
+        reject(`Failed to fetch file (${res.statusCode})`);
         return;
       }
 
       let data = "";
-      res.on("data", chunk => data += chunk);
-      res.on("end", () => resolve(data));
-    });
+
+      res.on("data", (chunk) => {
+        data += chunk;
+      });
+
+      res.on("end", () => {
+        resolve(data);
+      });
+    }).on("error", reject);
   });
 }
 
-async function install(repo, skill) {
-  if (!repo || !skill) {
-    console.error("Usage: musab-skills add <repo> --skill <name>");
-    process.exit(1);
-  }
+async function installSkill(repo, skill) {
+  if (!repo) error("Missing repo. Example: musab-skills add owner/repo --skill skill-name");
+  if (!skill) error("Missing --skill <skill-name>");
 
   const url = `https://raw.githubusercontent.com/${repo}/main/skills/${skill}/SKILL.md`;
+
+  log(`Downloading ${skill} from ${repo}...`);
 
   const content = await download(url);
 
   const targetDir = path.join(os.homedir(), ".claude", "skills", skill);
-  fs.mkdirSync(targetDir, { recursive: true });
-
   const targetFile = path.join(targetDir, "SKILL.md");
-  fs.writeFileSync(targetFile, content);
 
-  console.log(`Installed ${skill}`);
+  fs.mkdirSync(targetDir, { recursive: true });
+  fs.writeFileSync(targetFile, content, "utf8");
+
+  log(`Installed ${skill} → ${targetFile}`);
 }
 
 async function main() {
   const { command, repo, skill } = parseArgs(args);
 
-  if (command === "add") {
-    await install(repo, skill);
-  } else {
-    console.log("Only 'add' supported");
+  if (command !== "add") {
+    error("Only 'add' command is supported.\nExample: musab-skills add owner/repo --skill skill-name");
+  }
+
+  try {
+    await installSkill(repo, skill);
+  } catch (err) {
+    error(err);
   }
 }
 
